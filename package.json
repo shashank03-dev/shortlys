@@ -19,7 +19,7 @@
     "lucide-react": "^0.545.0",
     "mongodb": "^6.20.0",
     "nanoid": "^5.1.6",
-    "next": "15.5.4",
+    "next": "15.5.9",
     "next-themes": "^0.4.6",
     "nodemon": "^3.1.10",
     "npm": "^11.6.2",
