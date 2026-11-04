@@ -1,83 +1,57 @@
-import { NextResponse } from "next/server";
+import { withApiHandler, jsonOk } from "@/lib/api/errors";
+import { requireUser } from "@/lib/auth/require-user";
 import prisma from "@/lib/prisma";
-import { getAuth } from "@clerk/nextjs/server";
+import { serializeLinks } from "@/lib/links/metadata";
 
-export async function GET(req) {
-  try {
-    const { userId } = getAuth(req);
+export const GET = withApiHandler(async (request) => {
+  const userId = await requireUser(request);
+  const since = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000);
 
-    if (!userId) {
-      return NextResponse.json({ success: false, error: "Unauthorized" }, { status: 401 });
-    }
+  const urls = await prisma.url.findMany({
+    where: { userId },
+    orderBy: { createdAt: "desc" },
+    select: {
+      id: true,
+      url: true,
+      shorturl: true,
+      createdAt: true,
+      qrCode: { select: { id: true, scanCount: true, label: true } },
+    },
+  });
 
-    console.log("📊 Dashboard API: Fetching data for user:", userId);
-
-    const urls = await prisma.url.findMany({
-      where: { userId },
-      select: {
-        id: true,
-        url: true,
-        shorturl: true,
-        visits: {
-          select: {
-            id: true,
-            device: true,
-            os: true,
-            location: true,
-            createdAt: true,
-          },
-        },
-      },
-    });
-
-    console.log("✅ Dashboard API: Raw URLs fetched:", urls.length);
-
-    const visits = urls.flatMap((url) =>
-      url.visits.map((v) => ({
-        ...v,
-        urlId: url.id,
-        shorturl: url.shorturl,
-      }))
-    );
-
-    console.log("📈 Total visits found:", visits.length);
-    console.log("📍 Sample visit:", visits[0]);
-
-    // Count visits per device
-    const devices = visits.reduce((acc, v) => {
-      const key = v.device || "Unknown";
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Count visits per OS
-    const osStats = visits.reduce((acc, v) => {
-      const key = v.os || "Unknown";
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Count visits per location
-    const locations = visits.reduce((acc, v) => {
-      const key = v.location || "Unknown";
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-
-    console.log("📊 Computed stats:", { devices, osStats, locations });
-
-    return NextResponse.json({
-      success: true,
-      urls,
-      analytics: {
-        visits,
-        deviceStats: devices,
-        osStats,
-        locationStats: locations,
-      },
-    });
-  } catch (error) {
-    console.error("❌ Dashboard API Error:", error);
-    return NextResponse.json({ success: false, error: error.message }, { status: 500 });
+  const visitFilter = { urlId: { in: urls.map((url) => url.id) } };
+  const [rows, totals] = await Promise.all([prisma.visit.findMany({
+    where: { urlId: { in: urls.map((url) => url.id) }, createdAt: { gte: since } },
+    orderBy: [{ createdAt: "desc" }, { id: "desc" }],
+    take: 5001,
+    select: { id: true, urlId: true, device: true, os: true, browser: true, location: true, source: true, createdAt: true },
+  }), prisma.visit.groupBy({ by: ["urlId"], where: visitFilter, _count: { _all: true } })]);
+  const visitCounts = new Map(totals.map((row) => [row.urlId, row._count._all]));
+  const aliases = new Map(urls.map((url) => [url.id, url.shorturl]));
+  const visits = rows.slice(0, 5000).map((visit) => ({ ...visit, shorturl: aliases.get(visit.urlId) }));
+  const grouped = new Map();
+  for (const visit of visits) {
+    if (!grouped.has(visit.urlId)) grouped.set(visit.urlId, []);
+    grouped.get(visit.urlId).push(visit);
   }
-}
+  const qrScans = visits.filter((visit) => visit.source === "qr").length;
+  const count = (field) => visits.reduce((acc, visit) => {
+    const key = visit[field] || "Unknown";
+    acc[key] = (acc[key] || 0) + 1;
+    return acc;
+  }, {});
+
+  return jsonOk({
+    urls: serializeLinks(urls).map((url) => ({ ...url, visits: grouped.get(url.id) || [], visitCount: visitCounts.get(url.id) || 0 })),
+    analytics: {
+      visits,
+      deviceStats: count("device"),
+      osStats: count("os"),
+      browserStats: count("browser"),
+      locationStats: count("location"),
+      qrScans,
+      truncated: rows.length > 5000,
+      totalVisits: totals.reduce((total, row) => total + row._count._all, 0),
+    },
+  });
+});

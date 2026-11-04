@@ -1,84 +1,37 @@
-// app/api/analytics/route.js
-import { NextResponse } from "next/server";
+import { withApiHandler, jsonOk } from "@/lib/api/errors";
+import { requireUser } from "@/lib/auth/require-user";
+import { serializeLinks } from "@/lib/links/metadata";
 import prisma from "@/lib/prisma";
-import { getAuth } from "@clerk/nextjs/server";
 
-export async function GET(request) {
-  try {
-    const { userId } = getAuth(request);
+export const GET = withApiHandler(async (request) => {
+  const userId = await requireUser(request);
+  const urls = serializeLinks(await prisma.url.findMany({
+    where: { userId },
+    select: { id: true, shorturl: true, url: true, createdAt: true },
+  }));
+  if (!urls.length) return jsonOk({ data: { totalVisits: 0, devices: {}, locations: {}, visitsOverTime: [], urls: [] } });
 
-    if (!userId) {
-      return NextResponse.json({ success: false, message: "User not signed in" });
-    }
-
-    // Fetch all URLs for the user
-    const urls = await prisma.url.findMany({
-      where: { userId },
-      select: { id: true, shorturl: true, url: true, createdAt: true },
-    });
-
-    const urlIds = urls.map(u => u.id);
-
-    if (urlIds.length === 0) {
-      return NextResponse.json({
-        success: true,
-        data: {
-          totalVisits: 0,
-          devices: {},
-          locations: {},
-          visitsOverTime: [],
-          urls: [],
-        },
-      });
-    }
-
-    // Fetch analytics from visits table
-    const visits = await prisma.visit.findMany({
-      where: { urlId: { in: urlIds } },
-      select: { device: true, location: true, createdAt: true, urlId: true },
-    });
-
-    // Total visits
-    const totalVisits = visits.length;
-
-    // Count visits per device
-    const devices = visits.reduce((acc, v) => {
-      const key = v.device || "Unknown";
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {});
-
-    // Count visits per location
-    const locations = visits.reduce((acc, v) => {
-      const key = v.location || "Unknown";
-      acc[key] = (acc[key] || 0) + 1;
-      return acc;
-    }, {} );
-
-    // Visits over last 7 days
-    const visitsOverTime = Array.from({ length: 7 }, (_, i) => {
-      const date = new Date();
-      date.setDate(date.getDate() - i);
-      const day = date.toISOString().split('T')[0];
-      const count = visits.filter(v => v.createdAt.toISOString().startsWith(day)).length;
-      return { date: day, count };
-    }).reverse();
-
-    return NextResponse.json({
-      success: true,
-      data: {
-        totalVisits,
-        devices,
-        locations,
-        visitsOverTime,
-        urls,
-      },
-    });
-  } catch (err) {
-    console.error("❌ Analytics API Error:", err);
-    return NextResponse.json({
-      success: false,
-      message: "Internal Server Error",
-    });
-  }
-}
+  const where = { urlId: { in: urls.map((url) => url.id) } };
+  const days = Array.from({ length: 7 }, (_, index) => {
+    const start = new Date();
+    start.setUTCHours(0, 0, 0, 0);
+    start.setUTCDate(start.getUTCDate() - (6 - index));
+    return start;
+  });
+  const [totalVisits, devices, locations, dailyCounts] = await Promise.all([
+    prisma.visit.count({ where }),
+    prisma.visit.groupBy({ by: ["device"], where, _count: { _all: true } }),
+    prisma.visit.groupBy({ by: ["location"], where, _count: { _all: true } }),
+    Promise.all(days.map((start) => prisma.visit.count({ where: {
+      ...where, createdAt: { gte: start, lt: new Date(start.getTime() + 86_400_000) },
+    } }))),
+  ]);
+  const counts = (rows, field) => Object.fromEntries(rows.map((row) => [row[field] || "Unknown", row._count._all]));
+  return jsonOk({ data: {
+    totalVisits,
+    devices: counts(devices, "device"),
+    locations: counts(locations, "location"),
+    visitsOverTime: days.map((day, index) => ({ date: day.toISOString().slice(0, 10), count: dailyCounts[index] })),
+    urls,
+  } });
+});
