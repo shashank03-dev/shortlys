@@ -13,6 +13,7 @@ const eslintConfig = [
   ...compat.extends("next/core-web-vitals"),
   {
     ignores: [
+      "**/._*",
       "node_modules/**",
       ".next/**",
       ".next-test/**",

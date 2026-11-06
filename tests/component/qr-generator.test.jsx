@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { QrGenerator } from "@/components/qr/QrGenerator";
 import { QrWorkspace } from "@/components/qr/QrWorkspace";
+import { createQrSchema } from "@/lib/qr/schemas";
 
 const auth = vi.hoisted(() => ({ signedIn: true, openSignIn: vi.fn() }));
 vi.mock("@clerk/nextjs", () => ({
@@ -22,6 +23,18 @@ beforeEach(() => {
 });
 
 describe("QR generator", () => {
+  it("sends a new QR request accepted by the API schema", async () => {
+    fetch.mockImplementationOnce(async (_url, options) => {
+      const parsed = createQrSchema.safeParse(JSON.parse(options.body));
+      return parsed.success
+        ? Response.json({ data: qr }, { status: 201 })
+        : Response.json({ error: { message: "Invalid creation request." } }, { status: 400 });
+    });
+    render(<QrGenerator initialUrl="https://example.com/menu" />);
+    fireEvent.submit(screen.getByRole("button", { name: "Create QR code" }).closest("form"));
+    await screen.findByText("QR code ready");
+  });
+
   it("shows a labeled preview before creation without enabling downloads", () => {
     render(<QrGenerator initialUrl="https://example.com/menu" />);
     expect(screen.getByText("Preview")).toBeVisible();

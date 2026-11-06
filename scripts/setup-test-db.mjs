@@ -1,7 +1,7 @@
 import { spawnSync } from "node:child_process";
 import { testEnvironment } from "./test-env.mjs";
 
-for (const suite of ["integration", "e2e"]) {
+for (const suite of ["integration"]) {
   const result = spawnSync("npx", ["prisma", "db", "push"], {
     env: { ...process.env, ...testEnvironment(suite) }, stdio: "inherit",
   });

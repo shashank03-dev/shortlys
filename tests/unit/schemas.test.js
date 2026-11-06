@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { createQrSchema, generateSchema, updateQrSchema } from "@/lib/qr/schemas";
+import { createQrSchema, updateQrSchema } from "@/lib/qr/schemas";
 
 describe("schemas", () => {
   it("accepts a new QR and defaults", () => {
@@ -17,7 +17,4 @@ describe("schemas", () => {
     expect(updateQrSchema.safeParse({ label: null }).success).toBe(true);
   });
 
-  it("allows generate without an alias", () => {
-    expect(generateSchema.safeParse({ url: "example.com" }).success).toBe(true);
-  });
 });

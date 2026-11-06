@@ -68,7 +68,7 @@ export function QrGenerator({ initialUrl = "", initialShorturl = "", editId = ""
     try {
       const body = mode === "existing"
         ? { mode: "existing", shorturl: existing.shorturl, label: label || undefined, style }
-        : { url, label, style, ...(mode === "new" && alias ? { alias } : {}) };
+        : { url, label, style, ...(mode === "new" ? { mode: "new", ...(alias ? { alias } : {}) } : {}) };
       const response = await fetch(mode === "edit" ? `/api/qr/${editId}` : "/api/qr", {
         method: mode === "edit" ? "PATCH" : "POST",
         headers: { "Content-Type": "application/json" },

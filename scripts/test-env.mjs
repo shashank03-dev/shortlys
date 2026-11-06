@@ -7,5 +7,5 @@ export function testEnvironment(suite) {
     throw new Error("Tests require a local MongoDB replica set.");
   }
   database.pathname = `/shortlys_${suite}_test`;
-  return { DATABASE_URL: database.toString(), NEXT_PUBLIC_APP_URL: "http://localhost:3100", NEXT_DIST_DIR: ".next-test" };
+  return { DATABASE_URL: database.toString() };
 }

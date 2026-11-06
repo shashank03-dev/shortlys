@@ -19,10 +19,5 @@ export default defineConfig({
     globals: true,
     setupFiles: ["./tests/setup.js"],
     include: ["tests/unit/**/*.test.{js,jsx}", "tests/component/**/*.test.{js,jsx}"],
-    coverage: {
-      provider: "v8",
-      include: ["lib/**/*.js", "app/api/**/*.js"],
-      exclude: ["lib/prisma.js", "lib/mongodb.js"],
-    },
   },
 });

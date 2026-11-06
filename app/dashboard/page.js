@@ -92,7 +92,6 @@ export default function Dashboard() {
   const locationData = toChartData(analytics?.locationStats);
   const browserData = toChartData(analytics?.browserStats);
   const osData = toChartData(analytics?.osStats);
-  const qrScans = analytics?.qrScans ?? urls.reduce((acc, url) => acc + (url.qrCode?.scanCount || 0), 0);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -141,8 +140,8 @@ export default function Dashboard() {
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
             {[
               { title: "Total Links", value: urls.length, icon: <Link2 className="w-6 h-6" />, color: "text-primary", bg: "bg-primary/10", border: "hover:border-primary/30", badge: "+12%" },
-              { title: "Total Clicks", value: analytics?.totalVisits ?? urls.reduce((acc, curr) => acc + (curr.visitCount ?? curr.visits?.length ?? 0), 0), icon: <MousePointer2 className="w-6 h-6" />, color: "text-yellow-600", bg: "bg-accent/10", border: "hover:border-accent/30", badge: "+5%" },
-              { title: "QR Scans", value: qrScans, icon: <QrCode className="w-6 h-6" />, color: "text-primary", bg: "bg-primary/10", border: "hover:border-primary/30", badge: null },
+              { title: "Total Clicks", value: urls.reduce((acc, curr) => acc + (curr.visits?.length || 0), 0), icon: <MousePointer2 className="w-6 h-6" />, color: "text-yellow-600", bg: "bg-accent/10", border: "hover:border-accent/30", badge: "+5%" },
+              { title: "QR Scans", value: analytics?.qrScans || 0, icon: <QrCode className="w-6 h-6" />, color: "text-primary", bg: "bg-primary/10", border: "hover:border-primary/30", badge: null },
               { title: "Countries Reached", value: locationData.length, icon: <MapPin className="w-6 h-6" />, color: "text-green-700", bg: "bg-secondary/20", border: "hover:border-secondary/30", badge: null },
               { title: "Device Types", value: deviceData.length, icon: <Smartphone className="w-6 h-6" />, color: "text-blue-600", bg: "bg-blue-500/10", border: "hover:border-blue-500/30", badge: null }
             ].map((stat, i) => (
@@ -245,15 +244,15 @@ export default function Dashboard() {
                     </div>
                     <div className="flex items-center gap-6">
                       <div className="text-right">
-                        <p className="text-sm font-medium text-foreground">{url.visitCount ?? url.visits?.length ?? 0}</p>
+                        <p className="text-sm font-medium text-foreground">{url.visits?.length || 0}</p>
                         <p className="text-xs text-muted-foreground">Visits</p>
                       </div>
                       <Link
-                        href={url.qrCode ? `/qr?edit=${url.qrCode.id}` : `/qr?shorturl=${url.shorturl}&url=${encodeURIComponent(url.url)}`}
-                        className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                        href={url.qrCode ? `/qr?edit=${url.qrCode.id}` : `/qr?shorturl=${url.shorturl}`}
+                        className="rounded-lg p-2 text-muted-foreground hover:bg-secondary hover:text-foreground"
                         aria-label={url.qrCode ? "Edit QR code" : "Create QR code"}
                       >
-                        <QrCode className="w-5 h-5" />
+                        <QrCode className="h-5 w-5" />
                       </Link>
                       <a
                         href={url.url}
