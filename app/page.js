@@ -1,6 +1,5 @@
 'use client';
 
-import { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Zap, Shield, BarChart3, ArrowRight, CheckCircle, Star, Globe, Lock, Rocket, Users, TrendingUp, Cpu, Link as LinkIcon, MousePointerClick, Share2 } from 'lucide-react';
 import Link from 'next/link';
@@ -8,14 +7,9 @@ import Image from 'next/image';
 
 import confetti from 'canvas-confetti';
 import toast from 'react-hot-toast';
+import { QrFeatureSection } from '@/components/landing/QrFeatureSection';
 
 export default function LandingPage() {
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
-
   const handlePricingClick = () => {
     confetti({
       particleCount: 100,
@@ -31,16 +25,6 @@ export default function LandingPage() {
       },
     });
   };
-
-  if (!mounted) {
-    return (
-      <div className="min-h-screen flex flex-col">
-        <main className="flex-1 flex items-center justify-center bg-background">
-          <div className="animate-pulse text-lg text-muted-foreground">Loading...</div>
-        </main>
-      </div>
-    );
-  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background selection:bg-primary/20 selection:text-primary overflow-x-hidden">
@@ -213,6 +197,8 @@ export default function LandingPage() {
           ))}
         </div>
       </section>
+
+      <QrFeatureSection />
 
       {/* Free Forever Section */}
       <section id="powerful-features" className="py-32 relative overflow-hidden">

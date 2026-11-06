@@ -77,11 +77,13 @@ export default function Navbar() {
           <SignedIn>
             <NavLink href="/">Home</NavLink>
             <NavLink href="/shorten">Shorten</NavLink>
+            <NavLink href="/qr">QR Codes</NavLink>
             <NavLink href="/dashboard">Dashboard</NavLink>
           </SignedIn>
           <SignedOut>
             <NavLink href="/">Home</NavLink>
             <NavLink href="/#powerful-features">Features</NavLink>
+            <NavLink href="/qr">QR Codes</NavLink>
             <NavLink href="#" onClick={handlePricingClick}>Pricing</NavLink>
           </SignedOut>
         </div>
@@ -126,12 +128,15 @@ export default function Navbar() {
           <button
             onClick={toggleDarkMode}
             className="p-2 rounded-full hover:bg-secondary text-muted-foreground"
+            aria-label="Toggle dark mode"
           >
             {mounted && (theme === 'dark' ? <Sun className="w-5 h-5" /> : <Moon className="w-5 h-5" />)}
           </button>
           <button
             onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
             className="p-2 text-foreground"
+            aria-label={mobileMenuOpen ? "Close menu" : "Open menu"}
+            aria-expanded={mobileMenuOpen}
           >
             {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
           </button>
@@ -144,6 +149,7 @@ export default function Navbar() {
           <SignedIn>
             <Link href="/" className="text-foreground font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Home</Link>
             <Link href="/shorten" className="text-foreground font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Shorten</Link>
+            <Link href="/qr" className="text-foreground font-medium py-2" onClick={() => setMobileMenuOpen(false)}>QR Codes</Link>
             <Link href="/dashboard" className="text-foreground font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Dashboard</Link>
             <div className="pt-2 border-t border-border flex justify-between items-center">
               <span className="text-sm text-muted-foreground">Account</span>
@@ -153,6 +159,7 @@ export default function Navbar() {
           <SignedOut>
             <Link href="/" className="text-foreground font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Home</Link>
             <Link href="/#powerful-features" className="text-foreground font-medium py-2" onClick={() => setMobileMenuOpen(false)}>Features</Link>
+            <Link href="/qr" className="text-foreground font-medium py-2" onClick={() => setMobileMenuOpen(false)}>QR Codes</Link>
             <button className="text-foreground font-medium py-2 text-left" onClick={handlePricingClick}>Pricing</button>
             <div className="flex flex-col space-y-3 pt-2 border-t border-border">
               <SignInButton mode="modal">

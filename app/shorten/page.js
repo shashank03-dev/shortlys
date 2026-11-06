@@ -1,8 +1,9 @@
 'use client';
 
 import { useState } from 'react';
-import { Link2, Copy, Check, ArrowRight, Zap, Shield, BarChart3 } from 'lucide-react';
-import { nanoid } from 'nanoid';
+import { Link2, Copy, Check, ArrowRight, Zap, Shield, BarChart3, QrCode } from 'lucide-react';
+import Link from 'next/link';
+import { normalizeUrl } from '@/lib/qr/url';
 import toast from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -14,6 +15,7 @@ export default function ShortenPage() {
     const [url, setUrl] = useState('');
     const [alias, setAlias] = useState('');
     const [shortUrl, setShortUrl] = useState('');
+    const [shortAlias, setShortAlias] = useState('');
     const [loading, setLoading] = useState(false);
     const [copied, setCopied] = useState(false);
 
@@ -41,9 +43,11 @@ export default function ShortenPage() {
             return;
         }
 
-        // Simple domain validation (must contain at least one dot)
-        if (!url.includes('.') || url.length < 4) {
-            toast.error("Please enter a valid URL (e.g., youtube.com)");
+        let destination;
+        try {
+            destination = normalizeUrl(url);
+        } catch (error) {
+            toast.error(error.message);
             return;
         }
 
@@ -56,8 +60,8 @@ export default function ShortenPage() {
                     'Content-Type': 'application/json',
                 },
                 body: JSON.stringify({
-                    url: url,
-                    shorturl: alias.trim() || nanoid(6), // Use custom alias or generate random
+                    url: destination,
+                    ...(alias.trim() ? { shorturl: alias.trim() } : {}),
                 }),
             });
 
@@ -65,6 +69,7 @@ export default function ShortenPage() {
 
             if (response.ok) {
                 setShortUrl(`${window.location.origin}/${data.shorturl}`);
+                setShortAlias(data.shorturl);
                 toast.success('Link shortened successfully!');
                 setAlias(''); // Reset alias after success
             } else {
@@ -125,7 +130,8 @@ export default function ShortenPage() {
                                     whileFocus={{ scale: 1.01 }}
                                     type="text"
                                     placeholder="Paste your long URL here..."
-                                    className="w-full pl-16 pr-6 py-6 bg-white dark:bg-white/5 border-2 border-primary/20 hover:border-primary/40 focus:border-primary rounded-full focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-lg placeholder:text-muted-foreground/60 shadow-xl shadow-primary/5"
+                                    aria-label="Long URL"
+                                    className="w-full pl-16 pr-6 py-6 bg-white dark:bg-white/5 border-2 border-primary/20 hover:border-primary/40 focus:border-primary rounded-full focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-lg placeholder:text-muted-foreground shadow-xl shadow-primary/5"
                                     value={url}
                                     onChange={(e) => setUrl(e.target.value)}
                                     onFocus={handleInputFocus}
@@ -142,10 +148,11 @@ export default function ShortenPage() {
                                         whileFocus={{ scale: 1.01 }}
                                         type="text"
                                         placeholder="Custom alias (optional)"
-                                        className="w-full pl-10 pr-6 py-6 bg-white dark:bg-white/5 border-2 border-primary/20 hover:border-primary/40 focus:border-primary rounded-full focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-lg placeholder:text-muted-foreground/60 shadow-xl shadow-primary/5"
+                                        aria-label="Custom alias (optional)"
+                                        className="w-full pl-10 pr-6 py-6 bg-white dark:bg-white/5 border-2 border-primary/20 hover:border-primary/40 focus:border-primary rounded-full focus:outline-none focus:ring-4 focus:ring-primary/10 transition-all text-lg placeholder:text-muted-foreground shadow-xl shadow-primary/5"
                                         value={alias}
                                         onChange={(e) => setAlias(e.target.value)}
-                                        maxLength={20}
+                                        maxLength={32}
                                     />
                                 </div>
                                 <motion.button
@@ -193,27 +200,38 @@ export default function ShortenPage() {
                                                 {shortUrl}
                                             </a>
                                         </div>
-                                        <motion.button
-                                            whileHover={{ scale: 1.05 }}
-                                            whileTap={{ scale: 0.95 }}
-                                            onClick={copyToClipboard}
-                                            className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${copied
-                                                ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
-                                                : 'bg-background border border-border hover:border-primary hover:text-primary'
-                                                }`}
-                                        >
-                                            {copied ? (
-                                                <>
-                                                    <Check className="w-4 h-4 mr-2" />
-                                                    Copied
-                                                </>
-                                            ) : (
-                                                <>
-                                                    <Copy className="w-4 h-4 mr-2" />
-                                                    Copy
-                                                </>
-                                            )}
-                                        </motion.button>
+                                        <div className="flex items-center gap-2">
+                                            <motion.button
+                                                whileHover={{ scale: 1.05 }}
+                                                whileTap={{ scale: 0.95 }}
+                                                onClick={copyToClipboard}
+                                                className={`flex items-center px-4 py-2 rounded-lg font-medium transition-all ${copied
+                                                    ? 'bg-green-500 text-white shadow-lg shadow-green-500/20'
+                                                    : 'bg-background border border-border hover:border-primary hover:text-primary'
+                                                    }`}
+                                            >
+                                                {copied ? (
+                                                    <>
+                                                        <Check className="w-4 h-4 mr-2" />
+                                                        Copied
+                                                    </>
+                                                ) : (
+                                                    <>
+                                                        <Copy className="w-4 h-4 mr-2" />
+                                                        Copy
+                                                    </>
+                                                )}
+                                            </motion.button>
+                                            {shortAlias ? (
+                                                <Link
+                                                    href={`/qr?shorturl=${shortAlias}&url=${encodeURIComponent(url)}`}
+                                                    className="flex items-center px-4 py-2 rounded-lg font-medium bg-primary text-primary-foreground hover:bg-primary/90 transition-all"
+                                                >
+                                                    <QrCode className="w-4 h-4 mr-2" />
+                                                    QR
+                                                </Link>
+                                            ) : null}
+                                        </div>
                                     </div>
                                 </motion.div>
                             )}

@@ -15,6 +15,8 @@ export default function Footer() {
                     </p>
                 </div>
 
+                <Link href="/qr" className="text-sm font-medium text-muted-foreground hover:text-primary">QR Codes</Link>
+
                 {/* Made with Love */}
                 <div className="flex items-center text-sm text-muted-foreground font-medium">
                     <span>Made with</span>

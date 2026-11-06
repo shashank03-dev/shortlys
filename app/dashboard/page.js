@@ -5,8 +5,10 @@ import { useUser } from "@clerk/nextjs";
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer
 } from "recharts";
-import { Link2, MousePointer2, MapPin, Smartphone, ExternalLink, ArrowUpRight, TrendingUp } from "lucide-react";
+import { Link2, MousePointer2, MapPin, Smartphone, ExternalLink, ArrowUpRight, TrendingUp, QrCode } from "lucide-react";
 import { motion } from "framer-motion";
+import Link from "next/link";
+import { Badge } from "@/components/ui/badge";
 
 export default function Dashboard() {
   const { user, isLoaded } = useUser();
@@ -90,6 +92,7 @@ export default function Dashboard() {
   const locationData = toChartData(analytics?.locationStats);
   const browserData = toChartData(analytics?.browserStats);
   const osData = toChartData(analytics?.osStats);
+  const qrScans = analytics?.qrScans ?? urls.reduce((acc, url) => acc + (url.qrCode?.scanCount || 0), 0);
 
   const CustomTooltip = ({ active, payload, label }) => {
     if (active && payload && payload.length) {
@@ -135,10 +138,11 @@ export default function Dashboard() {
           </motion.div>
 
           {/* Quick Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6 mb-12">
             {[
               { title: "Total Links", value: urls.length, icon: <Link2 className="w-6 h-6" />, color: "text-primary", bg: "bg-primary/10", border: "hover:border-primary/30", badge: "+12%" },
-              { title: "Total Clicks", value: urls.reduce((acc, curr) => acc + (curr.visits?.length || 0), 0), icon: <MousePointer2 className="w-6 h-6" />, color: "text-yellow-600", bg: "bg-accent/10", border: "hover:border-accent/30", badge: "+5%" },
+              { title: "Total Clicks", value: analytics?.totalVisits ?? urls.reduce((acc, curr) => acc + (curr.visitCount ?? curr.visits?.length ?? 0), 0), icon: <MousePointer2 className="w-6 h-6" />, color: "text-yellow-600", bg: "bg-accent/10", border: "hover:border-accent/30", badge: "+5%" },
+              { title: "QR Scans", value: qrScans, icon: <QrCode className="w-6 h-6" />, color: "text-primary", bg: "bg-primary/10", border: "hover:border-primary/30", badge: null },
               { title: "Countries Reached", value: locationData.length, icon: <MapPin className="w-6 h-6" />, color: "text-green-700", bg: "bg-secondary/20", border: "hover:border-secondary/30", badge: null },
               { title: "Device Types", value: deviceData.length, icon: <Smartphone className="w-6 h-6" />, color: "text-blue-600", bg: "bg-blue-500/10", border: "hover:border-blue-500/30", badge: null }
             ].map((stat, i) => (
@@ -235,14 +239,22 @@ export default function Dashboard() {
                         <a href={`${window.location.origin}/${url.shorturl}`} target="_blank" className="text-muted-foreground hover:text-primary transition-colors">
                           <ExternalLink className="w-4 h-4" />
                         </a>
+                        {url.qrCode ? <Badge variant="primary">QR</Badge> : null}
                       </div>
                       <p className="text-sm text-muted-foreground truncate">{url.url}</p>
                     </div>
                     <div className="flex items-center gap-6">
                       <div className="text-right">
-                        <p className="text-sm font-medium text-foreground">{url.visits?.length || 0}</p>
+                        <p className="text-sm font-medium text-foreground">{url.visitCount ?? url.visits?.length ?? 0}</p>
                         <p className="text-xs text-muted-foreground">Visits</p>
                       </div>
+                      <Link
+                        href={url.qrCode ? `/qr?edit=${url.qrCode.id}` : `/qr?shorturl=${url.shorturl}&url=${encodeURIComponent(url.url)}`}
+                        className="p-2 rounded-lg hover:bg-secondary text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={url.qrCode ? "Edit QR code" : "Create QR code"}
+                      >
+                        <QrCode className="w-5 h-5" />
+                      </Link>
                       <a
                         href={url.url}
                         target="_blank"
