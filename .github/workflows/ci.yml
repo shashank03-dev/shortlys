@@ -1,0 +1,45 @@
+name: Verify Shortlys
+
+on:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY: ${{ secrets.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY }}
+      CLERK_SECRET_KEY: ${{ secrets.CLERK_SECRET_KEY }}
+      DATABASE_URL: mongodb://127.0.0.1:27018/shortlys_test?replicaSet=rs0&directConnection=true
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: docker compose -f docker-compose.test.yml up -d --wait
+      - run: npm run test:db
+      - run: npm run lint
+      - run: npm run test:coverage
+      - run: npm audit --omit=dev --audit-level=moderate
+      - name: Production browser verification
+        if: env.CLERK_SECRET_KEY != '' && env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY != ''
+        run: |
+          npx playwright install --with-deps chromium
+          npm run test:e2e
+      - name: Report missing browser configuration
+        if: env.CLERK_SECRET_KEY == '' || env.NEXT_PUBLIC_CLERK_PUBLISHABLE_KEY == ''
+        run: echo '::warning::Clerk development keys are missing; browser/build release checks remain pending.'
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: local-verification-artifacts
+          path: |
+            coverage/
+            test-results/
+          if-no-files-found: ignore
